@@ -17,9 +17,7 @@
   {% for val in person.full_name %}{{val}} - {% endfor %} {{block.super}}
 {% endblock %}
 {% block content %}
-{% if not standalone %}
-  {% include "map.html.template" %}
-{% endif %}
+{% include "map.html.template" %}
 <form method="post" action="{{env.repo_path}}/multiview">
   {{env.hidden_input_tags_for_preserved_query_params|safe}}
   {% for val in person.person_record_id %}
@@ -82,12 +80,6 @@
             <td colspan="{{cols}}" class="address sectiontop">
               <h3>{% trans "Home address" %}</h3>
             </td>
-          </tr>
-          <tr>
-            <td class="label">{% trans "Street name" %}:</td>
-            {% for val in person.home_street %}
-              <td class="field">{{val}}</td>
-            {% endfor %}
           </tr>
           <tr>
             <td class="label">{% trans "Neighborhood" %}:</td>

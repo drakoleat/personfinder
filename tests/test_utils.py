@@ -131,6 +131,37 @@ class UtilsTests(unittest.TestCase):
         assert utils.validate_expiry('abc') == None
         assert utils.validate_expiry(-100) == None
 
+    def test_validate_email(self):
+        # These email addresses are correct
+        email = 'test@example.com'
+        assert utils.validate_email(email) == True
+        email = 'test2@example.com'
+        assert utils.validate_email(email) == True
+        email = 'test3.test@example.com'
+        assert utils.validate_email(email) == True
+        email = 'test4.test$test@example.com'
+        assert utils.validate_email(email) == True
+        email = 'test6.test$test%test@example.com'
+        assert utils.validate_email(email) == True
+        email = ('test7.test@domain.whywouldyoueventwantatldthislonggoodgrief'
+                 'thisisprettyridiculous')
+        assert utils.validate_email(email) == True
+
+        # These email addresses are incorrect
+        email = 'test@example'
+        assert utils.validate_email(email) == False
+        email = 'test.com'
+        assert utils.validate_email(email) == False
+        email = 'usernamenoatsymbol.com'
+        assert utils.validate_email(email) == False
+        email = ('test@domain.thistldistoolongasitssixtyfourcharactersandthere'
+                 'arerulesafterall')
+        assert utils.validate_email(email) == False
+
+        # Empty string instead of email address
+        email = ''
+        assert utils.validate_email(email) == None
+
     def test_validate_version(self):
         for version in pfif.PFIF_VERSIONS:
             assert utils.validate_version(version) == pfif.PFIF_VERSIONS[
@@ -151,6 +182,15 @@ class UtilsTests(unittest.TestCase):
         assert utils.validate_age('2 0') == ''
 
     # TODO: test_validate_image
+
+    def test_fuzzify_age(self):
+        assert utils.fuzzify_age('20') == '20-25'
+        assert utils.fuzzify_age('22') == '20-25'
+        assert utils.fuzzify_age('21-22') == '20-25'
+        assert utils.fuzzify_age('40-48') == '40-48'
+        assert utils.fuzzify_age('40-40') == '40-45'
+        assert utils.fuzzify_age(None) == None
+        assert utils.fuzzify_age('banana') == None
 
     def test_set_utcnow_for_test(self):
         max_delta = datetime.timedelta(0,0,100)
@@ -244,6 +284,14 @@ class HandlerTests(unittest.TestCase):
         assert 'Invalid language tag' in response.body
         assert '<script' not in response.body
 
+    def test_should_show_inline_photo(self):
+        _, _, handler = self.handler_for_url('/haiti/create')
+        # localhost is the base URL for handlers in the test environment
+        assert handler.should_show_inline_photo(
+            'http://localhost/photo.jpg')
+        assert not handler.should_show_inline_photo(
+            'http://www.example.com/photo.jpg')
+
     def test_filter_sensitive_fields_in_person_record(self):
         """Test passing a person recrod to utils.filter_sensitive_fields().
         """
@@ -260,7 +308,7 @@ class HandlerTests(unittest.TestCase):
         assert person_record['date_of_birth'] == ''
         assert person_record['author_email'] == ''
         assert person_record['author_phone'] == ''
-        
+
     def test_filter_sensitive_fields_in_note_record(self):
         """Test passing a note recrod to utils.filter_sensitive_fields().
         """

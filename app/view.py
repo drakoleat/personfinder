@@ -23,6 +23,9 @@ import extend
 import reveal
 import subscribe
 
+import logging
+import pprint
+
 from django.utils.translation import ugettext as _
 import urlparse
 
@@ -60,7 +63,6 @@ class Handler(BaseHandler):
         if not person:
             return self.error(404,
                 _("This person's entry does not exist or has been deleted."))
-        standalone = self.request.get('standalone')
 
         # Check if private info should be revealed.
         content_id = 'view:' + self.params.id
@@ -73,7 +75,7 @@ class Handler(BaseHandler):
         person.source_time_local_string = self.to_formatted_local_time(
             person.source_date)
         person.expiry_date_local_string = self.to_formatted_local_date(
-            person.get_effective_expiry_date())        
+            person.get_effective_expiry_date())
         person.expiry_time_local_string = self.to_formatted_local_time(
             person.get_effective_expiry_date())
 
@@ -150,7 +152,6 @@ class Handler(BaseHandler):
                     person=person,
                     notes=notes,
                     linked_person_info=linked_person_info,
-                    standalone=standalone,
                     onload_function='view_page_loaded()',
                     show_private_info=show_private_info,
                     admin=users.is_current_user_admin(),

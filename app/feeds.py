@@ -43,7 +43,14 @@ def make_hidden_notes_blank(notes):
             note.text = ''
 
 
-class Repo(utils.BaseHandler):
+class BaseFeedsHandler(utils.BaseHandler):
+
+    def __init__(self, request, response, env):
+        super(BaseFeedsHandler, self).__init__(request, response, env)
+        self.set_auth()
+
+
+class Repo(BaseFeedsHandler):
     TITLE = 'Person Finder Repository Feed'
 
     repo_required = False
@@ -63,7 +70,7 @@ class Repo(utils.BaseHandler):
         utils.log_api_action(self, model.ApiActionLog.REPO)
 
 
-class Person(utils.BaseHandler):
+class Person(BaseFeedsHandler):
     https_required = True
 
     def get(self):
@@ -85,7 +92,7 @@ class Person(utils.BaseHandler):
             notes = model.Note.get_by_person_record_id(
                 self.repo, person['person_record_id'])
             # Show hidden notes as blank in the Person feed (melwitt)
-            # http://code.google.com/p/googlepersonfinder/issues/detail?id=58
+            # https://web.archive.org/web/20111228161607/http://code.google.com/p/googlepersonfinder/issues/detail?id=58
             make_hidden_notes_blank(notes)
 
             records = map(pfif_version.note_to_dict, notes)
@@ -118,7 +125,7 @@ class Person(utils.BaseHandler):
                              self.num_notes)
 
 
-class Note(utils.BaseHandler):
+class Note(BaseFeedsHandler):
     # SSL check is done in get() if person_record_id is not specified.
     https_required = False
 
@@ -158,7 +165,7 @@ class Note(utils.BaseHandler):
         updated = get_latest_entry_date(notes)
 
         # Show hidden notes as blank in the Note feed (melwitt)
-        # http://code.google.com/p/googlepersonfinder/issues/detail?id=58
+        # https://web.archive.org/web/20111228161607/http://code.google.com/p/googlepersonfinder/issues/detail?id=58
         make_hidden_notes_blank(notes)
 
         self.response.headers['Content-Type'] = 'application/xml; charset=utf-8'

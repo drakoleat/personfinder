@@ -360,6 +360,9 @@ msgid ""
 "To unsubscribe, follow this link: %(unsubscribe_link)s\n"
 msgstr ""
 
+msgid " (normal connection fee may apply)"
+msgstr ""
+
 msgid "(click to reveal)"
 msgstr "(د سپړلو لپاره کليک کړئ)"
 
@@ -581,6 +584,9 @@ msgstr ""
 msgid ""
 "Extend expiration date by %(extension_days)s days\n"
 "                "
+msgstr ""
+
+msgid "External photo"
 msgstr ""
 
 msgid "Failed to obtain search result for the phone number."
@@ -920,9 +926,6 @@ msgstr ""
 msgid "Photo"
 msgstr "انځور/ عکس"
 
-msgid "Photo (external site; normal connection fee may apply)"
-msgstr ""
-
 msgid ""
 "Photo uploaded is in an unrecognized format.  Please go back and try "
 "again."
@@ -957,6 +960,9 @@ msgid "Please fill in all the required fields."
 msgstr ""
 
 msgid "Please fill in your email address."
+msgstr ""
+
+msgid "Please only enter valid profile URLs."
 msgstr ""
 
 msgid "Please provide an valid email address."
@@ -1086,12 +1092,6 @@ msgstr ""
 msgid "Status of this person:"
 msgstr ""
 
-msgid "Street name"
-msgstr ""
-
-msgid "Street name only, no number"
-msgstr ""
-
 msgid "Street name, neighborhood, city, etc."
 msgstr ""
 
@@ -1138,6 +1138,9 @@ msgid "The author has disabled status updates on this record."
 msgstr ""
 
 msgid "The data is not ready yet. Try again in 24 hours."
+msgstr ""
+
+msgid "The email address you entered appears to be invalid."
 msgstr ""
 
 #, python-format

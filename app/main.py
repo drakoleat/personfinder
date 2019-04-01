@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The main request handler.  All dynamic requests except for remote_api are
+"""The main request handler. All dynamic requests except for remote_api are
 handled by this handler, which dispatches to all other dynamic handlers."""
 
 import django_setup  # always keep this first
@@ -189,39 +189,12 @@ def select_charset(request):
 
     If the selected charset is UTF-8, it always returns
     'utf-8' (const.CHARSET_UTF8), not 'utf8', 'UTF-8', etc.
+
+    For now, we always use UTF-8, because supporting anything else with WebOB
+    1.2.3 and webapp2 is impractical. We might revisit this once we migrate to
+    Django, with which it shouldn't be so difficult to support other character
+    sets.
     """
-    # We assume that any client that doesn't support UTF-8 will specify a
-    # preferred encoding in the Accept-Charset header, and will use this
-    # encoding for content, query parameters, and form data.  We make this
-    # assumption across all repositories.
-
-    # Get a list of the charsets that the client supports.
-    if request.get('charsets'):
-        charsets = request.get('charsets').split(',')
-    elif user_agents.prefer_sjis_charset(request):
-        # Some Japanese feature phones don't (fully) support UTF-8.
-        # They only support Shift_JIS. But they may not send Accept-Charset
-        # header. Also, we haven't confirmed, but there may be phones whose
-        # Accept-Charset header includes UTF-8 but its UTF-8 support is buggy.
-        # So we always use Shift_JIS regardless of Accept-Charset header.
-        charsets = ['Shift_JIS']
-    else:
-        charsets = request.accept_charset.best_matches()
-
-    # Always prefer UTF-8 if the client supports it.
-    for charset in charsets:
-        if charset.lower().replace('_', '-') in ['utf8', 'utf-8']:
-            return const.CHARSET_UTF8
-
-    # Otherwise, look for a requested charset that Python supports.
-    for charset in charsets:
-        try:
-            'xyz'.encode(charset, 'replace')  # test if charset is known
-            return charset
-        except:
-            continue
-
-    # If Python doesn't know any of the requested charsets, use UTF-8.
     return const.CHARSET_UTF8
 
 def select_lang(request, config=None):
@@ -238,7 +211,11 @@ def select_lang(request, config=None):
             request.cookies.get('django_language', None) or
             select_lang_from_header(request, default_lang=default_lang))
     lang = re.sub('[^A-Za-z0-9-]', '', lang)
-    return const.LANGUAGE_SYNONYMS.get(lang, lang)
+    lang = const.LANGUAGE_SYNONYMS.get(lang, lang)
+    if lang in const.LANGUAGE_ENDONYMS.keys():
+        return lang
+    else:
+        return default_lang
 
 def select_lang_from_header(request, default_lang):
     """Selects the best language matching 'Accept-Language' HTTP header."""
@@ -321,23 +298,17 @@ def setup_env(request):
     env.repo, env.action = get_repo_and_action(request)
     env.config = config.Configuration(env.repo or '*')
 
-    env.analytics_id = config.get('analytics_id')
-    env.amp_gtm_id = config.get('amp_gtm_id')
-    env.maps_api_key = config.get('maps_api_key')
+    env.analytics_id = env.config.get('analytics_id')
+    env.amp_gtm_id = env.config.get('amp_gtm_id')
+    env.maps_api_key = env.config.get('maps_api_key')
 
     # Internationalization-related stuff.
     env.charset = select_charset(request)
     env.lang = select_lang(request, env.config)
     env.rtl = env.lang in const.LANGUAGES_BIDI
-    env.virtual_keyboard_layout = const.VIRTUAL_KEYBOARD_LAYOUTS.get(env.lang)
-
-    # Used for parsing query params. This must be done before accessing any
-    # query params which may have multi-byte value, such as "given_name" below
-    # in this function.
-    request.charset = env.charset
 
     # Determine the resource bundle to use.
-    env.default_resource_bundle = config.get('default_resource_bundle', '1')
+    env.default_resource_bundle = env.config.get('default_resource_bundle', '1')
     env.resource_bundle = (request.cookies.get('resource_bundle', '') or
                            env.default_resource_bundle)
 
@@ -539,7 +510,9 @@ class Main(webapp.RequestHandler):
                 utils.set_utcnow_for_test(float(utcnow))
 
         # If requested, flush caches before we touch anything that uses them.
-        flush_caches(*request.get('flush', '').split(','))
+        # This is used for certain tests.
+        if utils.is_dev_app_server():
+            flush_caches(*request.get('flush', '').split(','))
 
         # Gather commonly used information into self.env.
         self.env = setup_env(request)
@@ -569,13 +542,25 @@ class Main(webapp.RequestHandler):
                 return False
         return True
 
+    def set_content_security_policy(self):
+        """Sets the CSP in the headers. Returns the nonce to use for scripts."""
+        csp_nonce = utils.generate_random_key(20)
+        csp_value = (
+            'object-src \'none\'; '
+            'script-src \'nonce-%s\' \'unsafe-inline\' '
+            '\'strict-dynamic\' https: http:; '
+            'base-uri \'none\';'
+        ) % csp_nonce
+        self.response.headers['Content-Security-Policy'] = csp_value
+        return csp_nonce
+
     def serve(self):
         request, response, env = self.request, self.response, self.env
 
         # If the Person Finder instance has not been initialized yet,
         # prepend to any served page a warning and a link to the admin
         # page where the datastore can be initialized.
-        if not config.get('initialized'):
+        if not env.config.get('initialized'):
             if request.get('operation') == 'setup_datastore':
                 setup_pf.setup_datastore()
                 self.redirect(env.global_url + '/')
@@ -586,15 +571,16 @@ class Main(webapp.RequestHandler):
                         (env.repo, env.charset), get_vars)
                 response.out.write(content)
 
-        if config.get('enable_react_ui'):
+        if env.config.get('enable_react_ui'):
             # TODO(nworden): serve static files from /global/static
             if env.repo == 'static':
                 self.serve_static_content(self.env.action)
             elif self.should_serve_react_ui():
+                csp_nonce = self.set_content_security_policy()
                 response.out.write(
                     resources.get_rendered(
                         'react_index.html', env.lang,
-                        get_vars=lambda: {'env': env}))
+                        get_vars=lambda: {'env': env, 'csp_nonce': csp_nonce}))
                 return
 
         if not env.action and not env.repo:

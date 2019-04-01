@@ -762,7 +762,7 @@ class PfifValidator:
           link_field = linking_note.find(
               self.tree.add_namespace_to_tag('linked_person_record_id'))
           messages.append(self.make_message(
-              'There is an asymmetric linked record.  That is, a note has a'
+              'There is an asymmetric linked record. That is, a note has a '
               'linked_person_record_id to another person, but that person '
               'does not link back.',
               record=linking_note, element=link_field, is_error=False))
@@ -826,7 +826,7 @@ def main():
   assert len(sys.argv) == 2, 'Usage: python pfif_validator.py my-pyif-xml-file'
   validator = PfifValidator(utils.open_file(sys.argv[1], 'r'))
   messages = validator.run_validations()
-  print(utils.MessagesOutput.generate_message_summary(messages, is_html=False))
+  print(utils.MessagesOutput.generate_message_summary(messages))
   print(validator.validator_messages_to_str(messages))
 
 if __name__ == '__main__':

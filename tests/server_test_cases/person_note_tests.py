@@ -24,6 +24,10 @@ import re
 import time
 import urlparse
 
+# This has to be imported before const, so that Django will get set up before
+# const tries to use Django's translation functions. When the server's actually
+# running, main.py will import it, but main.py doesn't get involved here.
+import django_setup
 from const import ROOT_URL, PERSON_STATUS_TEXT, NOTE_STATUS_TEXT
 from model import *
 import reveal
@@ -519,7 +523,7 @@ class PersonNoteTests(ServerTestsBase):
             True, '_test Another note body', '_test Another note author',
             'believed_alive',
             last_known_location='Port-au-Prince',
-            note_photo_url='http://xyz')
+            note_photo_url='http://localhost:8081/abc.jpg')
 
         # Check that a UserActionLog entry was created.
         self.verify_user_action_log('mark_alive', 'Note',
@@ -561,7 +565,7 @@ class PersonNoteTests(ServerTestsBase):
         self.s.submit(create_form,
                       own_info='no',
                       author_name='_test_author_name',
-                      author_email='_test_author_email',
+                      author_email='test_author_email@example.com',
                       author_phone='_test_author_phone',
                       clone='yes',
                       source_name='_test_source_name',
@@ -574,7 +578,6 @@ class PersonNoteTests(ServerTestsBase):
                       sex='female',
                       date_of_birth='1955',
                       age='52',
-                      home_street='_test_home_street',
                       home_neighborhood='_test_home_neighborhood',
                       home_city='_test_home_city',
                       home_state='_test_home_state',
@@ -595,8 +598,7 @@ class PersonNoteTests(ServerTestsBase):
                     '_test_alternate_given_names _test_alternate_family_names',
                 'Sex:': 'female',
                 # 'Date of birth:': '1955',  # currently hidden
-                'Age:': '52',
-                'Street name:': '_test_home_street',
+                'Age:': '50-55',
                 'Neighborhood:': '_test_home_neighborhood',
                 'City:': '_test_home_city',
                 'Province or state:': '_test_home_state',
@@ -914,13 +916,13 @@ class PersonNoteTests(ServerTestsBase):
         self.verify_update_notes(
             True, '_test Another note body', '_test Another note author',
             None, last_known_location='Port-au-Prince',
-            note_photo_url='http://xyz')
+            note_photo_url='http://localhost:8081/abc.jpg')
 
         # Submit the create form with complete information
         self.s.submit(create_form,
                       own_info='no',
                       author_name='_test_author_name',
-                      author_email='_test_author_email',
+                      author_email='test_author_email@example.com',
                       author_phone='_test_author_phone',
                       clone='yes',
                       source_name='_test_source_name',
@@ -933,7 +935,6 @@ class PersonNoteTests(ServerTestsBase):
                       sex='male',
                       date_of_birth='1970-01',
                       age='30-40',
-                      home_street='_test_home_street',
                       home_neighborhood='_test_home_neighborhood',
                       home_city='_test_home_city',
                       home_state='_test_home_state',
@@ -961,7 +962,6 @@ class PersonNoteTests(ServerTestsBase):
                 'Sex:': 'male',
                 # 'Date of birth:': '1970-01',  # currently hidden
                 'Age:': '30-40',
-                'Street name:': '_test_home_street',
                 'Neighborhood:': '_test_home_neighborhood',
                 'City:': '_test_home_city',
                 'Province or state:': '_test_home_state',
@@ -1033,7 +1033,7 @@ class PersonNoteTests(ServerTestsBase):
             sex='male',
             date_of_birth='1970-01-01',
             age='31-41',
-            photo_url='http://photo1',
+            photo_url='http://example.com/photo1',
             profile_urls='''http://www.facebook.com/_account_1
 http://www.twitter.com/_account_1
 http://www.foo.com/_account_1''',
@@ -1049,7 +1049,7 @@ http://www.foo.com/_account_1''',
             sex='male',
             date_of_birth='1970-02-02',
             age='32-42',
-            photo_url='http://photo2',
+            photo_url='http://example.com/photo2',
             profile_urls='http://www.facebook.com/_account_2',
         ), Person(
             key_name='haiti:test.google.com/person.333',
@@ -1063,7 +1063,7 @@ http://www.foo.com/_account_1''',
             sex='male',
             date_of_birth='1970-03-03',
             age='33-43',
-            photo_url='http://photo3',
+            photo_url='http://example.com/photo3',
         )])
 
         # All three records should appear on the multiview page.
@@ -1080,9 +1080,9 @@ http://www.foo.com/_account_1''',
         assert '31-41' in doc.content
         assert '32-42' in doc.content
         assert '33-43' in doc.content
-        assert 'http://photo1' in doc.content
-        assert 'http://photo2' in doc.content
-        assert 'http://photo3' in doc.content
+        assert 'http://example.com/photo1' in doc.content
+        assert 'http://example.com/photo2' in doc.content
+        assert 'http://example.com/photo3' in doc.content
         assert 'http://www.facebook.com/_account_1' in doc.content
         assert 'http://www.twitter.com/_account_1' in doc.content
         assert 'http://www.foo.com/_account_1' in doc.content
@@ -3167,7 +3167,7 @@ _feed_profile_url2</pfif:profile_urls>
     def test_person_feed_with_bad_chars(self):
         """Fetch a person whose fields contain characters that are not
         legally representable in XML, using the PFIF Atom feed."""
-        # See: http://www.w3.org/TR/REC-xml/#charsets
+        # See: https://www.w3.org/TR/REC-xml/#charsets
         db.put(Person(
             key_name='haiti:test.google.com/person.123',
             repo='haiti',
@@ -3599,50 +3599,6 @@ _feed_profile_url2</pfif:profile_urls>
             # Should not be available in a different repo.
             self.go('/pakistan/photo?id=%s' % id)
             assert self.s.status == 404
-
-    def test_xss_photo(self):
-        person, note = self.setup_person_and_note()
-        photo = self.setup_photo(person)
-        note_photo = self.setup_photo(note)
-        for record in [person, note]:
-            doc = self.go('/haiti/view?id=' + person.record_id)
-            assert record.photo_url not in doc.content
-            record.photo_url = 'http://xyz'
-            record.put()
-            doc = self.go('/haiti/view?id=' + person.record_id)
-            assert '//xyz' in doc.content
-            record.photo_url = 'bad_things://xyz'
-            record.put()
-            doc = self.go('/haiti/view?id=' + person.record_id)
-            assert record.photo_url not in doc.content
-
-    def test_xss_source_url(self):
-        person, note = self.setup_person_and_note()
-        doc = self.go('/haiti/view?id=' + person.record_id)
-        assert person.source_url in doc.content
-        person.source_url = 'javascript:alert(1);'
-        person.put()
-        doc = self.go('/haiti/view?id=' + person.record_id)
-        assert person.source_url not in doc.content
-
-    def test_xss_profile_urls(self):
-        profile_urls = ['http://abc', 'http://def', 'http://ghi']
-        person, note = self.setup_person_and_note()
-        person.profile_urls = '\n'.join(profile_urls)
-        person.put()
-        doc = self.go('/haiti/view?id=' + person.record_id)
-        for profile_url in profile_urls:
-            assert profile_url in doc.content
-        XSS_URL_INDEX = 1
-        profile_urls[XSS_URL_INDEX] = 'javascript:alert(1);'
-        person.profile_urls = '\n'.join(profile_urls)
-        person.put()
-        doc = self.go('/haiti/view?id=' + person.record_id)
-        for i, profile_url in enumerate(profile_urls):
-            if i == XSS_URL_INDEX:
-                assert profile_url not in doc.content
-            else:
-                assert profile_url in doc.content
 
     def test_extend_expiry(self):
         """Verify that extension of the expiry date works as expected."""
@@ -4478,6 +4434,33 @@ _feed_profile_url2</pfif:profile_urls>
         self.assert_error_deadend(
             doc, "This person's entry does not exist or has been deleted.")
 
+    def test_add_note_invalid_email(self):
+        """Tries to add a note with an invalid email. It should fail."""
+        person = Person(
+            key_name='haiti:test.google.com/person.112',
+            repo='haiti',
+            author_name='_test_author_name',
+            author_email='test@example.com',
+            full_name='_test_full_name',
+            entry_date=datetime.datetime.utcnow())
+        person.update_index(['old', 'new'])
+        person.put()
+
+        doc = self.go('/haiti/view?id=test.google.com/person.112')
+        add_note_page = self.go_to_add_note_page()
+        note_form = add_note_page.cssselect_one('form')
+        params = {'own_info': 'no',
+                  'given_name': '_test_given',
+                  'family_name': '_test_family',
+                  'author_name': '_test_author',
+                  'text': 'here is some text',
+                  'author_email': 'NotAValidEmailAdddress'}
+        doc = self.s.submit(note_form, params)
+        self.assertEqual(self.s.status, 400)
+        expected_err_msg = (
+            'The email address you entered appears to be invalid.')
+        assert expected_err_msg in doc.content
+
     def test_incoming_expired_record(self):
         """Tests that an incoming expired record can cause an existing record
         to expire and be deleted."""
@@ -5150,8 +5133,6 @@ _feed_profile_url2</pfif:profile_urls>
         d = self.go('/haiti/create')
         assert d.xpath('//input[@name="given_name"]')
         assert d.xpath('//input[@name="family_name"]')
-        assert d.xpath('//label[@for="home_street"]')
-        assert d.xpath('//input[@name="home_street"]')
         assert d.xpath('//label[@for="home_neighborhood"]')
         assert d.xpath('//input[@name="home_neighborhood"]')
         assert d.xpath('//label[@for="home_city"]')
@@ -5164,7 +5145,6 @@ _feed_profile_url2</pfif:profile_urls>
         self.s.submit(d.cssselect_one('form'),
                       given_name='_test_given',
                       family_name='_test_family',
-                      home_street='_test_home_street',
                       home_neighborhood='_test_home_neighborhood',
                       home_city='_test_home_city',
                       home_state='_test_home_state',
@@ -5173,8 +5153,8 @@ _feed_profile_url2</pfif:profile_urls>
         person = Person.all().get()
         self.go('/haiti/results?role=seek&'
                 'query_name=_test_given+_test_family&'
-                'query_location=_test_home_street+_test_home_neighborhood+'
-                '_test_home_city+_test_home_state+_test_home_country')
+                'query_location=_test_home_neighborhood+_test_home_city+'
+                '_test_home_state+_test_home_country')
         self.verify_results_page(1)
         person.delete()
 
@@ -5257,6 +5237,21 @@ _feed_profile_url2</pfif:profile_urls>
         # No redirect.
         self.go('/japan/', redirects=0)
         self.assertEqual(self.s.status, 200)
+
+    def test_create_with_invalid_email(self):
+        doc = self.go('/haiti/create')
+        doc = self.s.submit(
+            doc.cssselect_one('form'),
+            own_info='no',
+            given_name='_test_given',
+            family_name='_test_family',
+            home_postal_code='_test_12345',
+            author_name='_test_author',
+            author_email='NotAValidEmailAddress')
+        self.assertEqual(self.s.status, 400)
+        expected_err_msg = (
+            'The email address you entered appears to be invalid.')
+        assert expected_err_msg in doc.content
 
     def test_create_and_seek_with_nondefault_charset(self):
         """Follow the basic create/seek flow with non-default charset

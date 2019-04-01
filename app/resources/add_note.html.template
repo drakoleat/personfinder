@@ -39,7 +39,7 @@
         set_display(note_contents_id + '-mark-not-spam', !hidden);
       }
 
-      jQuery(document).ready(function() {
+      document.addEventListener('DOMContentLoaded', function() {
         make_form_expandable(".status.card");
       });
     </script>
@@ -47,9 +47,7 @@
 {% endblock head %}
 
 {% block content %}
-  {% if not standalone %}
-    {% include "map.html.template" %}
-  {% endif %}
+  {% include "map.html.template" %}
   <form method="post" enctype="multipart/form-data" action="{{env.repo_path}}/add_note">
     {{env.hidden_input_tags_for_preserved_query_params|safe}}
     <input type="hidden" name="id" value="{{person.record_id}}">

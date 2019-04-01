@@ -58,8 +58,8 @@ class Results(FrontendApiHandler):
 
     def get(self):
         searcher = Searcher(
-            self.repo, self.config.external_search_backends,
-            config.get('enable_fulltext_search'), Results.MAX_RESULTS)
+            self.repo, config.get('enable_fulltext_search'),
+            Results.MAX_RESULTS)
         results = searcher.search(
             self.params.query_name or self.params.query)
         self._return_json([self._result_to_dict(r) for r in results])
@@ -71,7 +71,29 @@ class Person(FrontendApiHandler):
 
     def get(self):
         # TODO: implement this
-        self._return_json({'name': 'Hard-coded placeholder'})
+        self._return_json({
+          'name': 'Hard-coded placeholder',
+          'sex': 'male',
+          'age': '42',
+          'home_city': 'Mountain View',
+          'home_state': 'CA',
+          'home_country': 'U.S.',
+          'description': '''
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
+            enim ad minim veniam, quis nostrud exercitation ullamco laboris
+            nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in
+            reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla
+            pariatur. Excepteur sint occaecat cupidatat non proident, sunt in
+            culpa qui officia deserunt mollit anim id est laborum.
+          ''',
+          'author_name': 'Hard-coded author',
+          'source_date': 'Jan 1, 2019 01:01AM',
+          'source_name': 'Google.org',
+          'profile_pages': [
+            {'site': 'facebook', 'value': 'https://www.facebook.com/hardcoded.placeholder.123'},
+          ],
+        })
 
 
 class Create(FrontendApiHandler):
@@ -87,7 +109,6 @@ class Create(FrontendApiHandler):
             given_name=self.params.given_name,
             age=self.params.age,
             sex=self.params.sex,
-            home_street=self.params.home_street,
             home_city=self.params.home_city,
             home_state=self.params.home_state,
             home_country=self.params.home_country,

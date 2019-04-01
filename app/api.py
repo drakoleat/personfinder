@@ -18,8 +18,6 @@
 
 __author__ = 'kpy@google.com (Ka-Ping Yee)'
 
-import django_setup  # always keep this first
-
 import calendar
 import csv
 import datetime
@@ -34,6 +32,7 @@ import urllib2
 import uuid
 
 import django.utils.html
+from django.utils import translation
 from django.utils.translation import ugettext as _
 from google.appengine import runtime
 from google.appengine.ext import db
@@ -42,8 +41,6 @@ from unidecode import unidecode
 
 import cloud_storage
 import config
-from django_setup import ugettext as _
-import external_search
 import full_text_search
 import importer
 import indexing
@@ -57,7 +54,7 @@ from model import Person, Note, ApiActionLog
 from search.searcher import Searcher
 from text_query import TextQuery
 from photo import create_photo, PhotoError
-from utils import Struct
+from utils import Struct, validate_email
 
 HARD_MAX_RESULTS = 200  # Clients can ask for more, but won't get more.
 PHOTO_UPLOAD_MAX_SIZE = 10485760 # Currently 10MB is the maximum upload size
@@ -205,10 +202,17 @@ def convert_xsl_to_csv(contents):
     return csv_output.getvalue(), None
 
 
+class BaseApiHandler(utils.BaseHandler):
+
+    def __init__(self, request, response, env):
+        super(BaseApiHandler, self).__init__(request, response, env)
+        self.set_auth()
+
+
 # TODO(gimite): Rename this class name and URL because it now supports both
 #     import and export, maybe after we decide to use CSV or Excel file for
 #     import and export.
-class Import(utils.BaseHandler):
+class Import(BaseApiHandler):
     """A web UI for users to import or export records in CSV / Excel format.
     """
 
@@ -351,7 +355,7 @@ class Import(utils.BaseHandler):
                 message=_('The data is not ready yet. Try again in 24 hours.'))
 
 
-class Read(utils.BaseHandler):
+class Read(BaseApiHandler):
     https_required = True
 
     def get(self):
@@ -394,7 +398,7 @@ class Read(utils.BaseHandler):
             self, ApiActionLog.READ, len(records), len(notes))
 
 
-class PhotoUpload(utils.BaseHandler):
+class PhotoUpload(BaseApiHandler):
     https_required = True
 
     def post(self):
@@ -432,7 +436,7 @@ class PhotoUpload(utils.BaseHandler):
         self.write('</url></response>')
 
 
-class Write(utils.BaseHandler):
+class Write(BaseApiHandler):
     https_required = True
 
     def post(self):
@@ -504,7 +508,7 @@ class Write(utils.BaseHandler):
 ''' % (type, total, written, ''.join(skipped_records).rstrip()))
 
 
-class Search(utils.BaseHandler):
+class Search(BaseApiHandler):
     https_required = False
 
     def get(self):
@@ -531,8 +535,7 @@ class Search(utils.BaseHandler):
                 results = [person]
         elif query_string:
             searcher = Searcher(
-                self.repo, self.config.external_search_backends,
-                config.get('enable_fulltext_search'), max_results)
+                self.repo, config.get('enable_fulltext_search'), max_results)
             results = searcher.search(query_string)
         else:
             self.info(
@@ -558,14 +561,14 @@ class Search(utils.BaseHandler):
         utils.log_api_action(self, ApiActionLog.SEARCH, len(records))
 
 
-class Subscribe(utils.BaseHandler):
+class Subscribe(BaseApiHandler):
     https_required = True
 
     def post(self):
         if not (self.auth and self.auth.subscribe_permission):
             return self.error(403, 'Missing or invalid authorization key')
 
-        if not subscribe.is_email_valid(self.params.subscribe_email):
+        if not validate_email(self.params.subscribe_email):
             return self.error(400, 'Invalid email address')
 
         person = model.Person.get(self.repo, self.params.id)
@@ -581,7 +584,7 @@ class Subscribe(utils.BaseHandler):
         return self.info(200, 'Successfully subscribed')
 
 
-class Unsubscribe(utils.BaseHandler):
+class Unsubscribe(BaseApiHandler):
     https_required = True
 
     def post(self):
@@ -607,7 +610,7 @@ def fetch_all(query):
     return results
 
 
-class Stats(utils.BaseHandler):
+class Stats(BaseApiHandler):
     def get(self):
         if not (self.auth and self.auth.stats_permission):
             self.info(
@@ -646,7 +649,7 @@ class Stats(utils.BaseHandler):
                                      'note': note_counts}))
 
 
-class HandleSMS(utils.BaseHandler):
+class HandleSMS(BaseApiHandler):
     """Person Finder doesn't directly handle SMSes from users. They are handled
     by Google internal SMS gateway. When the gateway receives an SMS, it sends
     an XML HTTP request to Person Finder, and sends back its response to the
@@ -726,7 +729,7 @@ class HandleSMS(utils.BaseHandler):
 
         if query_lang:
             # Use the language for the following calls of _().
-            django_setup.activate(query_lang)
+            translation.activate(query_lang)
 
         responses = []
 

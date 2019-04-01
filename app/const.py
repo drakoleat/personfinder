@@ -17,19 +17,18 @@
 
 # We use lazy translation in this file because the language isn't set yet.
 from __future__ import absolute_import
-import django_setup
-from django_setup import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 # The root URL of this application.
 ROOT_URL = 'http://google.org/personfinder'
 
 # The domain name of this application.  The application hosts multiple
-# repositories; each repository ID is http://<HOME_DOMAIN>/<REPO>.
+# repositories; each repository ID is https://<HOME_DOMAIN>/<REPO>.
 HOME_DOMAIN = 'personfinder.google.org'
 
 # Mapping from language codes to endonyms for all available languages.
 # You can get the list of language names in each language in Unicode CLDR data.
-# Go to http://unicode.org/Public/cldr/latest , download core.zip and look
+# Go to https://unicode.org/Public/cldr/latest , download core.zip and look
 # at common/main/*.xml in it.
 # Some names are taken from Wikipedia because they are missing in CLDR data or
 # they are in different script from our translation.
@@ -119,7 +118,7 @@ LANGUAGE_ENDONYMS = {
 
 # Mapping from language codes to English names for all available languages.
 # You can get the list of language names in each language in Unicode CLDR data.
-# Go to http://unicode.org/Public/cldr/latest , download core.zip and look
+# Go to https://unicode.org/Public/cldr/latest , download core.zip and look
 # at common/main/*.xml in it.
 LANGUAGE_EXONYMS = {
     'af': 'Afrikaans',
@@ -216,7 +215,9 @@ LANGUAGE_SYNONYMS = {
 }
 
 # RTL languages.
-LANGUAGES_BIDI = django_setup.LANGUAGES_BIDI + ['ps', 'prs']
+# This is mostly the same as LANGUAGES_BIDI set in django_setup, with the
+# addition of 'ps' and 'prs'.
+LANGUAGES_BIDI = ['ar', 'he', 'fa', 'iw', 'ps', 'prs', 'ur']
 
 # Mapping from language codes to Facebook locale codes.
 #
@@ -291,12 +292,6 @@ FACEBOOK_LOCALES = {
     'zh-CN': 'zh_CN',
     'zh-HK': 'zh_HK',
     'zh-TW': 'zh_TW',
-}
-
-# Mapping from language codes to the names of LayoutCode constants.  See:
-# http://code.google.com/apis/ajaxlanguage/documentation/referenceKeyboard.html
-VIRTUAL_KEYBOARD_LAYOUTS = {
-    'ur': 'URDU'
 }
 
 # Charset string for UTF-8 used in env.charset.

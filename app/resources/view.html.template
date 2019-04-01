@@ -60,9 +60,7 @@
 {% endblock head %}
 
 {% block content %}
-  {% if not standalone %}
-    {% include "map.html.template" %}
-  {% endif %}
+  {% include "map.html.template" %}
 
   <div class="view">
 
@@ -103,25 +101,19 @@
                 <span class="value">{{person.date_of_birth}}</span>
               </div>
               {% endcomment %}
-              {% if person.age %}
+              {% if person.fuzzified_age %}
                 <div class="field">
                   <span class="label">{% trans "Age" %}:</span>
-                  <span class="value">{{person.age}}</span>
+                  <span class="value">{{person.fuzzified_age}}</span>
                 </div>
               {% endif %}
               <div class="end-multi-columns"></div>
             </div>
           {% endif %}
 
-          {% if person.home_street or person.home_neighborhood or person.home_city or person.home_state or person.home_postal_code or person.home_country %}
+          {% if person.home_neighborhood or person.home_city or person.home_state or person.home_postal_code or person.home_country %}
             <div class="address section">
               <h2>{% trans "Home address" %}</h2>
-              {% if person.home_street %}
-                <div class="field">
-                  <span class="label">{% trans "Street name" %}:</span>
-                  <span class="value">{{person.home_street}}</span>
-                </div>
-              {% endif %}
               {% if person.home_neighborhood %}
                 <div class="field">
                   <span class="label">{% trans "Neighborhood" %}:</span>
@@ -179,7 +171,10 @@
                       <img src="{{person.photo_url_no_scheme}}"
                           class="photo" alt="[PHOTO]">
                     {% else %}
-                      {% trans "Photo (external site; normal connection fee may apply)" %}
+                      {% trans "External photo" %}
+                      {% if config.zero_rating_mode %}
+                        {% trans " (normal connection fee may apply)" %}
+                      {% endif %}
                     {% endif %}
                   </a>
                 </span>

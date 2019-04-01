@@ -23,7 +23,7 @@ import Footer from './../components/Footer.js';
 import LoadingIndicator from './../components/LoadingIndicator.js';
 import RepoHeader from './../components/RepoHeader.js';
 import SearchBar from './../components/SearchBar.js';
-import Utils from './../Utils.js';
+import Utils from './../utils/Utils.js';
 
 const MESSAGES = defineMessages({
   createNewRecord: {
@@ -148,8 +148,7 @@ class Results extends Component {
         <div className='results-body'>
           <SearchBar
             repoId={this.repoId}
-            initialValue={
-                new URL(window.location.href).searchParams.get('query_name')}
+            initialValue={Utils.getURLParam(this.props, 'query_name')}
             onSearch={this.handleSearch}
           />
           {this.renderResults()}
